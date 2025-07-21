@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食品品牌A - 库存管理策略演示系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .page-section {
+            display: none;
+        }
+        .page-section.active {
+            display: block;
+        }
+        .chart-container {
+            height: 300px;
+            margin: 20px 0;
+        }
+        .large-chart {
+            height: 400px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 顶部导航栏 -->
+    <nav class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <i class="fas fa-cube text-2xl"></i>
+                <h1 class="text-xl font-bold">食品品牌A - 库存管理系统</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="bg-green-500 px-2 py-1 rounded text-sm">系统正常</span>
+                <span id="current-time" class="text-sm"></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto flex">
+        <!-- 侧边栏导航 -->
+        <aside class="w-64 bg-white shadow-md p-4">
+            <nav class="space-y-2">
+                <button onclick="showPage('dashboard')" class="nav-btn w-full text-left px-4 py-2 rounded bg-blue-500 text-white">
+                    <i class="fas fa-dashboard mr-2"></i>库存总览仪表板
+                </button>
+                <button onclick="showPage('allocation')" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-100">
+                    <i class="fas fa-cogs mr-2"></i>智能分配控制台
+                </button>
+                <button onclick="showPage('monitor')" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-100">
+                    <i class="fas fa-chart-line mr-2"></i>实时监控
+                </button>
+                <button onclick="showPage('strategy')" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-100">
+                    <i class="fas fa-chess-knight mr-2"></i>策略配置
+                </button>
+            </nav>
+        </aside>
+
+        <!-- 主要内容区域 -->
+        <main class="flex-1 p-6">
+            <!-- 库存总览仪表板 -->
+            <div id="dashboard" class="page-section active">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold mb-4">库存总览仪表板</h2>
+                    
+                    <!-- 关键指标卡片 -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600">总库存量</p>
+                                    <p class="text-2xl font-bold text-blue-600">156,423</p>
+                                </div>
+                                <i class="fas fa-boxes text-3xl text-blue-500"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600">可用库存</p>
+                                    <p class="text-2xl font-bold text-green-600">142,115</p>
+                                </div>
+                                <i class="fas fa-check-circle text-3xl text-green-500"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600">已分配库存</p>
+                                    <p class="text-2xl font-bold text-orange-600">12,856</p>
+                                </div>
+                                <i class="fas fa-hand-holding text-3xl text-orange-500"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600">保质期预警</p>
+                                    <p class="text-2xl font-bold text-red-600">1,452</p>
+                                </div>
+                                <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 库存分布图表 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-4">区域库存分布</h3>
+                            <div class="chart-container">
+                                <canvas id="regionChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-4">渠道库存分布</h3>
+                            <div class="chart-container">
+                                <canvas id="channelChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 仓库详细信息 -->
+                    <div class="bg-white rounded-lg shadow mb-6">
+                        <div class="p-6">
+                            <h3 class="text-lg font-semibold mb-4">仓库库存详情</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left">仓库名称</th>
+                                            <th class="px-4 py-2 text-left">类型</th>
+                                            <th class="px-4 py-2 text-left">总库存</th>
+                                            <th class="px-4 py-2 text-left">可用库存</th>
+                                            <th class="px-4 py-2 text-left">利用率</th>
+                                            <th class="px-4 py-2 text-left">状态</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="border-b">
+                                            <td class="px-4 py-2">华东大仓</td>
+                                            <td class="px-4 py-2">区域大仓</td>
+                                            <td class="px-4 py-2">45,623</td>
+                                            <td class="px-4 py-2">42,156</td>
+                                            <td class="px-4 py-2">
+                                                <div class="flex items-center">
+                                                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                                        <div class="bg-blue-500 h-2 rounded-full" style="width: 87%"></div>
+                                                    </div>
+                                                    <span>87%</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-2">
+                                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">正常</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="border-b">
+                                            <td class="px-4 py-2">华南大仓</td>
+                                            <td class="px-4 py-2">区域大仓</td>
+                                            <td class="px-4 py-2">38,945</td>
+                                            <td class="px-4 py-2">36,221</td>
+                                            <td class="px-4 py-2">
+                                                <div class="flex items-center">
+                                                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                                        <div class="bg-blue-500 h-2 rounded-full" style="width: 78%"></div>
+                                                    </div>
+                                                    <span>78%</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-2">
+                                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">正常</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="border-b">
+                                            <td class="px-4 py-2">上海地方仓</td>
+                                            <td class="px-4 py-2">地方仓</td>
+                                            <td class="px-4 py-2">12,567</td>
+                                            <td class="px-4 py-2">11,234</td>
+                                            <td class="px-4 py-2">
+                                                <div class="flex items-center">
+                                                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                                        <div class="bg-yellow-500 h-2 rounded-full" style="width: 92%"></div>
+                                                    </div>
+                                                    <span>92%</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-2">
+                                                <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">警告</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="border-b">
+                                            <td class="px-4 py-2">菜鸟仓</td>
+                                            <td class="px-4 py-2">第三方仓</td>
+                                            <td class="px-4 py-2">8,956</td>
+                                            <td class="px-4 py-2">8,234</td>
+                                            <td class="px-4 py-2">
+                                                <div class="flex items-center">
+                                                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                                        <div class="bg-blue-500 h-2 rounded-full" style="width: 65%"></div>
+                                                    </div>
+                                                    <span>65%</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-2">
+                                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">正常</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 保质期预警 -->
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="p-6">
+                            <h3 class="text-lg font-semibold mb-4 text-red-600">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>保质期预警
+                            </h3>
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between p-3 bg-red-50 rounded">
+                                    <div>
+                                        <p class="font-semibold">华东大仓 - 产品A001</p>
+                                        <p class="text-sm text-gray-600">剩余保质期：3天，库存量：856件</p>
+                                    </div>
+                                    <span class="bg-red-500 text-white px-3 py-1 rounded">紧急</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-yellow-50 rounded">
+                                    <div>
+                                        <p class="font-semibold">华南大仓 - 产品B002</p>
+                                        <p class="text-sm text-gray-600">剩余保质期：7天，库存量：596件</p>
+                                    </div>
+                                    <span class="bg-yellow-500 text-white px-3 py-1 rounded">警告</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 智能分配控制台 -->
+            <div id="allocation" class="page-section">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold mb-4">智能分配控制台</h2>
+                    
+                    <!-- 业务场景选择 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        <div class="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-md transition-shadow" onclick="selectScenario('daily')">
+                            <div class="text-center">
+                                <i class="fas fa-calendar-day text-4xl text-blue-500 mb-3"></i>
+                                <h3 class="text-lg font-semibold">日常销售</h3>
+                                <p class="text-sm text-gray-600 mt-2">稳定需求，最大化库存利用率</p>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-md transition-shadow" onclick="selectScenario('promotion')">
+                            <div class="text-center">
+                                <i class="fas fa-tags text-4xl text-green-500 mb-3"></i>
+                                <h3 class="text-lg font-semibold">大促预售</h3>
+                                <p class="text-sm text-gray-600 mt-2">预售锁定，按需生产</p>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-md transition-shadow" onclick="selectScenario('livestream')">
+                            <div class="text-center">
+                                <i class="fas fa-video text-4xl text-red-500 mb-3"></i>
+                                <h3 class="text-lg font-semibold">直播带货</h3>
+                                <p class="text-sm text-gray-600 mt-2">专属库存，实时响应</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 分配策略详情 -->
+                    <div id="daily-scenario" class="scenario-detail bg-white rounded-lg shadow p-6 mb-6">
+                        <h3 class="text-lg font-semibold mb-4 text-blue-600">日常销售库存分配策略</h3>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-semibold mb-3">分配原则</h4>
+                                <ul class="space-y-2 text-sm">
+                                    <li class="flex items-start">
+                                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                                        <span>就近发货原则：优先使用地方仓和门店库存</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                                        <span>动态安全库存：根据历史销售数据计算</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                                        <span>库存均衡：自动调拨过剩库存</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-3">分配比例</h4>
+                                <div class="chart-container">
+                                    <canvas id="dailyAllocationChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="promotion-scenario" class="scenario-detail bg-white rounded-lg shadow p-6 mb-6" style="display: none;">
+                        <h3 class="text-lg font-semibold mb-4 text-green-600">大促预售库存分配策略</h3>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-semibold mb-3">分配原则</h4>
+                                <ul class="space-y-2 text-sm">
+                                    <li class="flex items-start">
+                                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                                        <span>预售锁定：根据预售订单量预先锁定库存</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                                        <span>弹性生产：按实际订单量安排生产</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                                        <span>分批发货：避免过度囤积</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-3">预售进度</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm">预售阶段一</span>
+                                        <div class="flex items-center">
+                                            <div class="w-24 bg-gray-200 rounded-full h-2 mr-2">
+                                                <div class="bg-green-500 h-2 rounded-full" style="width: 85%"></div>
+                                            </div>
+                                            <span class="text-sm">85%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm">预售阶段二</span>
+                                        <div class="flex items-center">
+                                            <div class="w-24 bg-gray-200 rounded-full h-2 mr-2">
+                                                <div class="bg-green-500 h-2 rounded-full" style="width: 45%"></div>
+                                            </div>
+                                            <span class="text-sm">45%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm">预售阶段三</span>
+                                        <div class="flex items-center">
+                                            <div class="w-24 bg-gray-200 rounded-full h-2 mr-2">
+                                                <div class="bg-yellow-500 h-2 rounded-full" style="width: 12%"></div>
+                                            </div>
+                                            <span class="text-sm">12%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="livestream-scenario" class="scenario-detail bg-white rounded-lg shadow p-6 mb-6" style="display: none;">
+                        <h3 class="text-lg font-semibold mb-4 text-red-600">直播带货库存分配策略</h3>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-semibold mb-3">分配原则</h4>
+                                <ul class="space-y-2 text-sm">
+                                    <li class="flex items-start">
+                                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                                        <span>专属库存池：单独分配直播库存</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                                        <span>实时补货：根据销售情况动态调整</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                                        <span>快速响应：确保直播间库存充足</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-3">直播库存状态</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+                                        <div>
+                                            <p class="font-semibold text-sm">李佳琦直播间</p>
+                                            <p class="text-xs text-gray-600">今日19:00-21:00</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm font-semibold">2,500件</p>
+                                            <p class="text-xs text-green-600">已准备</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+                                        <div>
+                                            <p class="font-semibold text-sm">薇娅直播间</p>
+                                            <p class="text-xs text-gray-600">明日20:00-22:00</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm font-semibold">1,800件</p>
+                                            <p class="text-xs text-yellow-600">分配中</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 智能分配算法 -->
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold mb-4">智能分配算法</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-semibold mb-3">核心计算公式</h4>
+                                <div class="bg-gray-50 p-4 rounded font-mono text-sm">
+                                    <p>可用库存 = 实物库存 - 已分配库存 - 安全库存 - 保质期预警库存</p>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-3">优先级排序</h4>
+                                <ol class="space-y-2 text-sm">
+                                    <li class="flex items-center">
+                                        <span class="bg-red-500 text-white px-2 py-1 rounded-full text-xs mr-2">1</span>
+                                        直播专属库存（时效性最强）
+                                    </li>
+                                    <li class="flex items-center">
+                                        <span class="bg-yellow-500 text-white px-2 py-1 rounded-full text-xs mr-2">2</span>
+                                        大促预售库存（已确定需求）
+                                    </li>
+                                    <li class="flex items-center">
+                                        <span class="bg-blue-500 text-white px-2 py-1 rounded-full text-xs mr-2">3</span>
+                                        日常销售库存（稳定需求）
+                                    </li>
+                                    <li class="flex items-center">
+                                        <span class="bg-gray-500 text-white px-2 py-1 rounded-full text-xs mr-2">4</span>
+                                        安全库存（风险缓冲）
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 实时监控 -->
+            <div id="monitor" class="page-section">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold mb-4">实时监控</h2>
+                    
+                    <!-- 实时数据卡片 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600">实时订单量</p>
+                                    <p class="text-2xl font-bold text-blue-600">1,234</p>
+                                    <p class="text-xs text-green-600">↑ 12% 较昨日</p>
+                                </div>
+                                <i class="fas fa-shopping-cart text-3xl text-blue-500"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600">库存周转率</p>
+                                    <p class="text-2xl font-bold text-green-600">4.2</p>
+                                    <p class="text-xs text-green-600">↑ 8% 较上周</p>
+                                </div>
+                                <i class="fas fa-sync text-3xl text-green-500"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-600">缺货预警</p>
+                                    <p class="text-2xl font-bold text-red-600">3</p>
+                                    <p class="text-xs text-red-600">需要补货</p>
+                                </div>
+                                <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 实时库存变化图 -->
+                    <div class="bg-white rounded-lg shadow p-6 mb-6">
+                        <h3 class="text-lg font-semibold mb-4">实时库存变化</h3>
+                        <div class="large-chart">
+                            <canvas id="realtimeChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 订单处理状态 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-lg font-semibold mb-4">订单处理状态</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between p-3 bg-blue-50 rounded">
+                                    <div>
+                                        <p class="font-semibold text-sm">订单 #ORD20240301001</p>
+                                        <p class="text-xs text-gray-600">华东大仓 → 上海</p>
+                                    </div>
+                                    <span class="bg-blue-500 text-white px-2 py-1 rounded text-xs">处理中</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-green-50 rounded">
+                                    <div>
+                                        <p class="font-semibold text-sm">订单 #ORD20240301002</p>
+                                        <p class="text-xs text-gray-600">华南大仓 → 广州</p>
+                                    </div>
+                                    <span class="bg-green-500 text-white px-2 py-1 rounded text-xs">已发货</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-yellow-50 rounded">
+                                    <div>
+                                        <p class="font-semibold text-sm">订单 #ORD20240301003</p>
+                                        <p class="text-xs text-gray-600">华北大仓 → 北京</p>
+                                    </div>
+                                    <span class="bg-yellow-500 text-white px-2 py-1 rounded text-xs">待分配</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-lg font-semibold mb-4">库存预警</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between p-3 bg-red-50 rounded">
+                                    <div>
+                                        <p class="font-semibold text-sm">产品A001</p>
+                                        <p class="text-xs text-gray-600">华东大仓库存不足</p>
+                                    </div>
+                                    <span class="bg-red-500 text-white px-2 py-1 rounded text-xs">紧急</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-yellow-50 rounded">
+                                    <div>
+                                        <p class="font-semibold text-sm">产品B002</p>
+                                        <p class="text-xs text-gray-600">华南大仓接近安全库存</p>
+                                    </div>
+                                    <span class="bg-yellow-500 text-white px-2 py-1 rounded text-xs">警告</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-blue-50 rounded">
+                                    <div>
+                                        <p class="font-semibold text-sm">产品C003</p>
+                                        <p class="text-xs text-gray-600">华西大仓库存充足</p>
+                                    </div>
+                                    <span class="bg-blue-500 text-white px-2 py-1 rounded text-xs">正常</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 性能监控 -->
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold mb-4">系统性能监控</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="text-center">
+                                <div class="relative inline-block">
+                                    <svg class="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+                                        <path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="2"/>
+                                        <path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#4ade80" stroke-width="2" stroke-dasharray="85, 100"/>
+                                    </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-lg font-semibold">85%</span>
+                                    </div>
+                                </div>
+                                <p class="mt-2 text-sm text-gray-600">系统响应速度</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="relative inline-block">
+                                    <svg class="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+                                        <path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="2"/>
+                                        <path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="92, 100"/>
+                                    </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-lg font-semibold">92%</span>
+                                    </div>
+                                </div>
+                                <p class="mt-2 text-sm text-gray-600">数据同步率</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="relative inline-block">
+                                    <svg class="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+                                        <path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="2"/>
+                                        <path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="78, 100"/>
+                                    </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-lg font-semibold">78%</span>
+                                    </div>
+                                </div>
+                                <p class="mt-2 text-sm text-gray-600">API成功率</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 策略配置 -->
+            <div id="strategy" class="page-section">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold mb-4">策略配置</h2>
+                    
+                    <!-- 库存管理策略框架 -->
+                    <div class="bg-white rounded-lg shadow p-6 mb-6">
+                        <h3 class="text-lg font-semibold mb-4">库存管理策略框架</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-semibold mb-3">分层库存管理架构</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center p-3 bg-blue-50 rounded">
+                                        <i class="fas fa-database text-blue-500 mr-3"></i>
+                                        <div>
+                                            <p class="font-semibold text-sm">统一库存池</p>
+                                            <p class="text-xs text-gray-600">OMS作为核心，整合所有仓储资源</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center p-3 bg-green-50 rounded">
+                                        <i class="fas fa-brain text-green-500 mr-3"></i>
+                                        <div>
+                                            <p class="font-semibold text-sm">智能分配引擎</p>
+                                            <p class="text-xs text-gray-600">根据业务场景动态分配库存</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center p-3 bg-yellow-50 rounded">
+                                        <i class="fas fa-layer-group text-yellow-500 mr-3"></i>
+                                        <div>
+                                            <p class="font-semibold text-sm">多级缓冲机制</p>
+                                            <p class="text-xs text-gray-600">区域大仓→地方仓→门店的梯度布局</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center p-3 bg-red-50 rounded">
+                                        <i class="fas fa-eye text-red-500 mr-3"></i>
+                                        <div>
+                                            <p class="font-semibold text-sm">实时监控系统</p>
+                                            <p class="text-xs text-gray-600">保质期预警、库存预警、销售监控</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-3">库存计算方案</h4>
+                                <div class="bg-gray-50 p-4 rounded">
+                                    <p class="text-sm font-semibold mb-2">核心计算公式：</p>
+                                    <div class="font-mono text-sm bg-white p-3 rounded border">
+                                        可用库存 = 实物库存 - 已分配库存 - 安全库存 - 保质期预警库存
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <h5 class="font-semibold mb-2">分场景库存分配策略：</h5>
+                                    <ul class="text-sm space-y-1">
+                                        <li>• 日常销售：动态安全库存，就近发货</li>
+                                        <li>• 大促预售：预售锁定，弹性生产</li>
+                                        <li>• 直播带货：专属库存池，实时补货</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 配置参数设置 -->
+                    <div class="bg-white rounded-lg shadow p-6 mb-6">
+                        <h3 class="text-lg font-semibold mb-4">配置参数设置</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-semibold mb-3">安全库存配置</h4>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1">最小安全库存比例</label>
+                                        <input type="range" min="5" max="30" value="15" class="w-full">
+                                        <div class="flex justify-between text-xs text-gray-600">
+                                            <span>5%</span>
+                                            <span>当前：15%</span>
+                                            <span>30%</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1">保质期预警天数</label>
+                                        <input type="range" min="1" max="30" value="7" class="w-full">
+                                        <div class="flex justify-between text-xs text-gray-600">
+                                            <span>1天</span>
+                                            <span>当前：7天</span>
+                                            <span>30天</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-3">分配权重设置</h4>
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm">直播专属库存</span>
+                                        <div class="flex items-center">
+                                            <input type="range" min="0" max="100" value="40" class="w-24 mr-2">
+                                            <span class="text-sm w-8">40%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm">大促预售库存</span>
+                                        <div class="flex items-center">
+                                            <input type="range" min="0" max="100" value="35" class="w-24 mr-2">
+                                            <span class="text-sm w-8">35%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm">日常销售库存</span>
+                                        <div class="flex items-center">
+                                            <input type="range" min="0" max="100" value="25" class="w-24 mr-2">
+                                            <span class="text-sm w-8">25%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 门店接单限制配置 -->
+                    <div class="bg-white rounded-lg shadow p-6 mb-6">
+                        <h3 class="text-lg font-semibold mb-4">门店接单限制配置</h3>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left">门店类型</th>
+                                        <th class="px-4 py-2 text-left">每日接单限制</th>
+                                        <th class="px-4 py-2 text-left">当前设置</th>
+                                        <th class="px-4 py-2 text-left">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b">
+                                        <td class="px-4 py-2">旗舰店</td>
+                                        <td class="px-4 py-2">50-200单</td>
+                                        <td class="px-4 py-2">
+                                            <input type="number" value="150" class="w-20 p-1 border rounded">
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            <button class="bg-blue-500 text-white px-2 py-1 rounded text-xs">更新</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-b">
+                                        <td class="px-4 py-2">标准店</td>
+                                        <td class="px-4 py-2">20-100单</td>
+                                        <td class="px-4 py-2">
+                                            <input type="number" value="80" class="w-20 p-1 border rounded">
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            <button class="bg-blue-500 text-white px-2 py-1 rounded text-xs">更新</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-b">
+                                        <td class="px-4 py-2">小型店</td>
+                                        <td class="px-4 py-2">10-50单</td>
+                                        <td class="px-4 py-2">
+                                            <input type="number" value="30" class="w-20 p-1 border rounded">
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            <button class="bg-blue-500 text-white px-2 py-1 rounded text-xs">更新</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 智能调拨规则 -->
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold mb-4">智能调拨规则</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-semibold mb-3">触发条件</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center">
+                                        <input type="checkbox" checked class="mr-2">
+                                        <span class="text-sm">库存不足时自动调拨</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="checkbox" checked class="mr-2">
+                                        <span class="text-sm">库存过剩时自动均衡</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="checkbox" class="mr-2">
+                                        <span class="text-sm">保质期临近时优先调拨</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-3">调拨优先级</h4>
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                        <span class="text-sm">地方仓 → 地方仓</span>
+                                        <span class="text-xs bg-green-500 text-white px-2 py-1 rounded">高</span>
+                                    </div>
+                                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                        <span class="text-sm">区域大仓 → 地方仓</span>
+                                        <span class="text-xs bg-yellow-500 text-white px-2 py-1 rounded">中</span>
+                                    </div>
+                                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                        <span class="text-sm">第三方仓 → 地方仓</span>
+                                        <span class="text-xs bg-red-500 text-white px-2 py-1 rounded">低</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 页面切换功能
+        function showPage(pageId) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // 显示选中页面
+            document.getElementById(pageId).classList.add('active');
+            
+            // 更新导航按钮状态
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-500', 'text-white');
+                btn.classList.add('hover:bg-gray-100');
+            });
+            
+            event.target.classList.add('bg-blue-500', 'text-white');
+            event.target.classList.remove('hover:bg-gray-100');
+        }
+
+        // 业务场景选择
+        function selectScenario(scenario) {
+            document.querySelectorAll('.scenario-detail').forEach(detail => {
+                detail.style.display = 'none';
+            });
+            
+            document.getElementById(scenario + '-scenario').style.display = 'block';
+        }
+
+        // 更新时间
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString('zh-CN');
+        }
+
+        // 初始化图表
+        function initCharts() {
+            // 区域库存分布图
+            const regionCtx = document.getElementById('regionChart').getContext('2d');
+            new Chart(regionCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['华东', '华南', '华西', '华北'],
+                    datasets: [{
+                        data: [45623, 38945, 35221, 36634],
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // 渠道库存分布图
+            const channelCtx = document.getElementById('channelChart').getContext('2d');
+            new Chart(channelCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['线下门店', '天猫', '京东', '拼多多', '抖音', '其他'],
+                    datasets: [{
+                        label: '库存量',
+                        data: [85000, 28000, 18000, 12000, 8000, 5423],
+                        backgroundColor: '#3b82f6'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // 日常销售分配图
+            const dailyCtx = document.getElementById('dailyAllocationChart').getContext('2d');
+            new Chart(dailyCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['地方仓', '区域大仓', '门店', '第三方仓'],
+                    datasets: [{
+                        data: [40, 30, 20, 10],
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // 实时库存变化图
+            const realtimeCtx = document.getElementById('realtimeChart').getContext('2d');
+            new Chart(realtimeCtx, {
+                type: 'line',
+                data: {
+                    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                    datasets: [{
+                        label: '总库存',
+                        data: [156423, 155890, 154567, 153245, 151890, 150456],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true
+                    }, {
+                        label: '可用库存',
+                        data: [142115, 141567, 140234, 138890, 137456, 136123],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            initCharts();
+        });
+    </script>
+</body>
+</html>
